@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#120b16">
+<title>Mumları Üfle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Outfit:wght@300;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#120b16;--cream:#ffeacb;--glow:255,170,70}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--ink)}
+body{font-family:"Outfit",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;color:var(--cream);
+  -webkit-user-select:none;user-select:none;touch-action:none;
+  background:radial-gradient(120% 80% at 50% 24%,#3a2033 0%,#1b1020 45%,#0b070f 100%)}
+
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  perspective:1100px;perspective-origin:50% 42%}
+#scene{position:absolute;left:50%;top:52%;width:0;height:0;transform-style:preserve-3d;
+  transform:rotateX(-17deg) rotateY(-18deg)}
+#scene>*{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.face{position:absolute;left:0;top:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+
+#roomGlow{position:fixed;left:50%;top:34%;width:150vmin;height:150vmin;margin:-75vmin 0 0 -75vmin;
+  pointer-events:none;border-radius:50%;transition:opacity .9s ease;
+  background:radial-gradient(circle,rgba(var(--glow),.20) 0%,rgba(var(--glow),.07) 32%,transparent 62%)}
+#vignette{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(105% 75% at 50% 45%,transparent 40%,rgba(6,3,10,.82) 100%)}
+
+.flame-rig{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.flame{position:absolute;left:-9px;top:-30px;width:18px;height:30px;transform-origin:50% 100%;
+  border-radius:50% 50% 42% 42%/68% 68% 32% 32%;will-change:transform,opacity;
+  background:radial-gradient(ellipse at 50% 78%,#fffbe9 0%,#ffd275 26%,#ff9b21 58%,rgba(255,90,0,.55) 82%,rgba(255,60,0,0) 100%);
+  box-shadow:0 0 18px 6px rgba(255,150,40,.55),0 0 46px 18px rgba(255,110,10,.24)}
+.flame::after{content:"";position:absolute;left:50%;bottom:2px;width:6px;height:11px;margin-left:-3px;
+  border-radius:50% 50% 40% 40%/70% 70% 30% 30%;background:rgba(120,190,255,.5);filter:blur(1px)}
+.smoke{position:absolute;left:-6px;top:-30px;width:12px;height:12px;border-radius:50%;
+  background:rgba(214,206,214,.42);filter:blur(4px);pointer-events:none;animation:rise 2.4s ease-out forwards}
+@keyframes rise{0%{opacity:.55;transform:translate3d(0,0,0) scale(.5)}
+  100%{opacity:0;transform:translate3d(22px,-130px,0) scale(3.2)}}
+
+#wind{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.gust{position:absolute;height:1.5px;border-radius:2px;animation:gust .9s linear forwards;
+  background:linear-gradient(90deg,transparent,rgba(255,235,205,.55),transparent)}
+@keyframes gust{0%{opacity:0;transform:translate3d(-40vw,0,0) scaleX(.4)}
+  25%{opacity:.9}100%{opacity:0;transform:translate3d(80vw,0,0) scaleX(1)}}
+
+#hud{position:fixed;left:0;right:0;bottom:0;padding:16px 20px calc(18px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:11px;align-items:center;
+  background:linear-gradient(180deg,transparent,rgba(8,4,12,.75) 55%)}
+#title{position:fixed;left:0;right:0;top:calc(24px + env(safe-area-inset-top));text-align:center;pointer-events:none}
+#title h1{font-family:"Fraunces",Georgia,serif;font-weight:300;font-size:clamp(26px,7vw,42px);line-height:1.05}
+#title h1 em{font-style:italic;font-weight:600;color:#ffd79b}
+#title p{margin-top:8px;font-size:12px;font-weight:300;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,234,203,.5)}
+
+.meter{position:relative;width:min(420px,100%);height:8px;border-radius:99px;background:rgba(255,234,203,.14)}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#8ad7c0,#ffd275,#ff7a3d);transition:width .06s linear}
+.meter u{position:absolute;top:-4px;bottom:-4px;width:2px;background:#ffd79b;border-radius:2px;left:50%}
+.row{display:flex;align-items:center;gap:14px;width:min(420px,100%)}
+.row label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,234,203,.55);white-space:nowrap}
+input[type=range]{-webkit-appearance:none;flex:1;height:22px;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:99px;background:rgba(255,234,203,.22)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7.5px;
+  border-radius:50%;background:var(--cream);box-shadow:0 0 10px rgba(255,200,120,.5)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:min(420px,100%)}
+button{font-family:inherit;font-size:14px;color:var(--cream);background:rgba(255,234,203,.09);
+  border:1px solid rgba(255,234,203,.24);padding:11px 18px;border-radius:99px;cursor:pointer;
+  transition:background .2s,transform .1s}
+button:active{transform:scale(.96)}
+button.primary{background:var(--cream);color:#2b1826;border-color:var(--cream);font-weight:500}
+button:focus-visible{outline:2px solid #ffd79b;outline-offset:3px}
+#blowBtn{flex:1;min-width:170px;font-weight:500;letter-spacing:.02em}
+#blowBtn.on{background:rgba(255,150,60,.35);border-color:#ffb15e}
+#status{font-size:12.5px;color:rgba(255,234,203,.6);text-align:center;min-height:1.2em;padding:0 6px;line-height:1.45}
+#status b{color:#ffd79b;font-weight:500}
+
+#gate{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:18px;padding:30px;text-align:center;overflow-y:auto;
+  background:radial-gradient(80% 60% at 50% 45%,#2a1729,#0a060e 90%);transition:opacity .5s ease}
+#gate h2{font-family:"Fraunces",Georgia,serif;font-weight:300;font-size:clamp(26px,7.5vw,42px);line-height:1.1}
+#gate h2 em{font-style:italic;font-weight:600;color:#ffd79b}
+#gate p{max-width:36ch;font-size:14px;font-weight:300;line-height:1.6;color:rgba(255,234,203,.66)}
+#diag{max-width:38ch;width:100%;padding:13px 15px;border-radius:14px;font-size:13px;line-height:1.55;
+  border:1px solid rgba(255,234,203,.2);background:rgba(255,234,203,.06);text-align:left}
+#diag.warn{border-color:rgba(255,150,90,.5);background:rgba(255,120,60,.1)}
+#diag strong{display:block;margin-bottom:5px;font-weight:500;color:#ffd79b}
+#diag code{font-size:12px;background:rgba(0,0,0,.3);padding:1px 5px;border-radius:5px}
+.hidden{opacity:0;pointer-events:none}
+
+#wish{position:fixed;left:0;right:0;top:38%;text-align:center;pointer-events:none;opacity:0;
+  transform:translateY(14px);transition:opacity .9s ease,transform .9s ease;z-index:5}
+#wish span{font-family:"Fraunces",Georgia,serif;font-style:italic;font-weight:300;
+  font-size:clamp(24px,7vw,40px);color:#ffe7bd;text-shadow:0 0 30px rgba(255,180,90,.35)}
+#wish.on{opacity:1;transform:translateY(0)}
+@media (prefers-reduced-motion:reduce){.gust{display:none}.smoke{animation-duration:1.2s}}
+</style>
+</head>
+<body>
+
+<div id="roomGlow"></div>
+<div id="stage"><div id="scene"></div></div>
+<div id="vignette"></div>
+<div id="wind"></div>
+
+<div id="title">
+  <h1>İyi ki <em>doğdun</em></h1>
+  <p id="subtitle">Bir dilek tut</p>
+</div>
+
+<div id="wish"><span>Dileğin gerçek olsun</span></div>
+
+<div id="hud">
+  <div class="meter"><i id="meterFill"></i><u id="meterMark"></u></div>
+  <div class="row">
+    <label for="sens">Hassasiyet</label>
+    <input id="sens" type="range" min="1" max="100" value="60" aria-label="Mikrofon hassasiyeti">
+  </div>
+  <div class="btns">
+    <button id="blowBtn">Basılı tut ve üfle</button>
+    <button id="relight">Yeniden yak</button>
+  </div>
+  <p id="status">Yükleniyor…</p>
+</div>
+
+<div id="gate">
+  <h2>Bir dilek tut,<br><em>sonra üfle</em></h2>
+  <div id="diag"></div>
+  <div class="btns">
+    <button class="primary" id="start">Mikrofonu aç</button>
+    <button id="skip">Mikrofonsuz devam et</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= PASTA ================= */
+const scene=document.getElementById('scene');
+function make(cls,w,h,transform,css){
+  const d=document.createElement('div');d.className=cls;
+  d.style.width=w+'px';d.style.height=h+'px';
+  d.style.marginLeft=(-w/2)+'px';d.style.marginTop=(-h/2)+'px';
+  d.style.transform=transform;if(css)Object.assign(d.style,css);return d;
+}
+function shade(deg){const a=(deg-12)*Math.PI/180;return 0.62*(1-(Math.cos(a)*0.5+0.5));}
+function cylinder(parent,o){
+  const step=360/o.seg,w=(2*Math.PI*o.r)/o.seg+1.4;
+  for(let i=0;i<o.seg;i++){
+    const deg=i*step,s=shade(deg).toFixed(3);
+    parent.appendChild(make('face',w,o.h,
+      'translateY('+(o.baseY-o.h/2)+'px) rotateY('+deg+'deg) translateZ('+o.r+'px)',
+      {background:'linear-gradient(rgba(8,2,10,'+s+'),rgba(8,2,10,'+s+')),linear-gradient(180deg,'+o.topColor+' 0%,'+o.bottomColor+' 62%,#2d1a15 100%)'}));
+  }
+  if(o.top){
+    const disc=make('face',o.r*2,o.r*2,'translateY('+(o.baseY-o.h)+'px) rotateX(90deg)',
+      {borderRadius:'50%',background:'radial-gradient(circle at 38% 32%,'+o.top.hi+' 0%,'+o.top.lo+' 58%,'+o.top.edge+' 100%)'});
+    parent.appendChild(disc);return disc;
+  }
+}
+function frosting(parent,o){
+  const step=360/o.seg,w=(2*Math.PI*o.r)/o.seg+1.6;
+  for(let i=0;i<o.seg;i++){
+    const deg=i*step,drip=16+Math.abs(Math.sin(i*1.7))*20,s=(shade(deg)*0.8).toFixed(3);
+    parent.appendChild(make('face',w,drip,
+      'translateY('+(o.baseY-drip/2)+'px) rotateY('+deg+'deg) translateZ('+(o.r+0.6)+'px)',
+      {borderRadius:'0 0 '+w+'px '+w+'px',
+       background:'linear-gradient(rgba(60,20,30,'+s+'),rgba(60,20,30,'+s+')),linear-gradient(180deg,'+o.hi+','+o.color+')'}));
+  }
+}
+const T1={r:134,h:76},T2={r:92,h:60},TOP_Y=-(T1.h+T2.h);
+cylinder(scene,{r:176,h:11,baseY:0,seg:34,bottomColor:'#3a2a3d',topColor:'#6e5b70',
+  top:{hi:'#8d7a8e',lo:'#5c4a5e',edge:'#3a2a3d'}});
+cylinder(scene,{r:T1.r,h:T1.h,baseY:-11,seg:46,bottomColor:'#4e2e22',topColor:'#7d4d36'});
+frosting(scene,{r:T1.r,baseY:-11-T1.h,seg:46,color:'#f6cf9e',hi:'#fff0d6'});
+cylinder(scene,{r:T1.r,h:2,baseY:-11-T1.h,seg:46,bottomColor:'#f3cb9a',topColor:'#fff2da',
+  top:{hi:'#fff4e0',lo:'#f0c795',edge:'#d8a874'}});
+cylinder(scene,{r:T2.r,h:T2.h,baseY:-11-T1.h,seg:38,bottomColor:'#b4405c',topColor:'#e07189'});
+frosting(scene,{r:T2.r,baseY:TOP_Y-11,seg:38,color:'#f6cf9e',hi:'#fff0d6'});
+const topDisc=cylinder(scene,{r:T2.r,h:2,baseY:TOP_Y-11,seg:38,bottomColor:'#f3cb9a',topColor:'#fff2da',
+  top:{hi:'#fff6e6',lo:'#f2cd9f',edge:'#d9a878'}});
+const SPR=['#e0566f','#7fc7b1','#f6b352','#f2f0ea','#b98adf'];
+for(let i=0;i<26;i++){
+  const a=Math.random()*Math.PI*2,rr=26+Math.random()*(T2.r-40),s=document.createElement('div');
+  s.style.cssText='position:absolute;width:7px;height:3px;border-radius:2px;left:'+(T2.r+Math.cos(a)*rr-3.5)+
+    'px;top:'+(T2.r+Math.sin(a)*rr-1.5)+'px;background:'+SPR[i%5]+';transform:rotate('+(Math.random()*180)+'deg);opacity:.9';
+  topDisc.appendChild(s);
+}
+
+/* ================= MUMLAR ================= */
+const CANDLE_H=54,CANDLE_R=6,candles=[],layout=[];
+for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2+0.4;layout.push({x:Math.cos(a)*54,z:Math.sin(a)*54});}
+layout.push({x:0,z:0});
+layout.forEach(function(pos){
+  const rig=document.createElement('div');
+  rig.style.cssText='position:absolute;left:0;top:0;transform-style:preserve-3d';
+  rig.style.transform='translateY('+(TOP_Y-13)+'px) translate3d('+pos.x+'px,0,'+pos.z+'px)';
+  scene.appendChild(rig);
+  const seg=10,step=360/seg,w=(2*Math.PI*CANDLE_R)/seg+1.2;
+  for(let k=0;k<seg;k++){
+    const deg=k*step,s=shade(deg).toFixed(3);
+    rig.appendChild(make('face',w,CANDLE_H,
+      'translateY('+(-CANDLE_H/2)+'px) rotateY('+deg+'deg) translateZ('+CANDLE_R+'px)',
+      {background:'linear-gradient(rgba(20,6,16,'+s+'),rgba(20,6,16,'+s+')),repeating-linear-gradient(58deg,#fdf6ec 0 7px,#e0637c 7px 14px)'}));
+  }
+  rig.appendChild(make('face',CANDLE_R*2,CANDLE_R*2,'translateY('+(-CANDLE_H)+'px) rotateX(90deg)',
+    {borderRadius:'50%',background:'radial-gradient(circle,#fffaf0,#dcbfa4)'}));
+  const flameRig=document.createElement('div');flameRig.className='flame-rig';
+  flameRig.style.transform='translateY('+(-CANDLE_H-3)+'px)';
+  const flame=document.createElement('div');flame.className='flame';
+  flameRig.appendChild(flame);rig.appendChild(flameRig);
+  candles.push({flameRig:flameRig,flame:flame,lit:true,phase:Math.random()*6.28,seed:0.7+Math.random()*0.6});
+});
+
+/* ================= KAMERA ================= */
+let rotY=-18,rotX=-17,drag=null;
+function applyScene(){scene.style.transform='rotateX('+rotX+'deg) rotateY('+rotY+'deg)';}
+const stage=document.getElementById('stage');
+stage.addEventListener('pointerdown',function(e){drag={x:e.clientX,y:e.clientY,ry:rotY,rx:rotX};});
+stage.addEventListener('pointermove',function(e){
+  if(!drag)return;
+  rotY=drag.ry+(e.clientX-drag.x)*0.35;
+  rotX=Math.max(-52,Math.min(2,drag.rx-(e.clientY-drag.y)*0.22));
+  applyScene();
+});
+addEventListener('pointerup',function(){drag=null;});
+addEventListener('pointercancel',function(){drag=null;});
+
+/* ================= TEŞHİS ================= */
+const diag=document.getElementById('diag');
+const statusEl=document.getElementById('status');
+const startBtn=document.getElementById('start');
+const inFrame=(function(){try{return window.self!==window.top;}catch(e){return true;}})();
+const secure=window.isSecureContext===true;
+const hasAPI=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+
+function report(){
+  let html='',warn=false;
+  if(inFrame){
+    warn=true;
+    html='<strong>Bu pencere mikrofona izin vermiyor</strong>Sayfa bir önizleme çerçevesi (iframe) içinde açılmış. Tarayıcı bu durumda izin penceresini hiç göstermez. Dosyayı indirip <code>Safari</code>’de doğrudan aç.';
+  }else if(!secure||!hasAPI){
+    warn=true;
+    html='<strong>Bağlantı güvenli değil</strong>Adres <code>'+location.protocol+'</code> ile açılmış. iPhone yalnızca <code>https://</code> adreslerde mikrofon izni verir. Dosyayı ücretsiz bir yere yükle (ör. Netlify Drop, GitHub Pages) ve o https adresini aç.';
+  }else{
+    html='<strong>Hazır</strong>Mikrofon kullanılabilir. İzin penceresi çıkınca "İzin Ver" de.';
+  }
+  html+='<br><br>Her koşulda <b>Basılı tut ve üfle</b> düğmesiyle mumları söndürebilirsin.';
+  diag.innerHTML=html;
+  diag.className=warn?'warn':'';
+  if(warn)startBtn.textContent='Yine de dene';
+}
+report();
+
+/* ================= MİKROFON ================= */
+let analyser=null,freqData=null,timeData=null,audioCtx=null,micOn=false;
+let noiseFloor=18,calibrating=0;
+const sens=document.getElementById('sens');
+const meterFill=document.getElementById('meterFill');
+const meterMark=document.getElementById('meterMark');
+
+async function startMic(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)
+      throw new Error('NotSupported');
+    const stream=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    const AC=window.AudioContext||window.webkitAudioContext;
+    audioCtx=new AC();
+    if(audioCtx.state==='suspended')await audioCtx.resume();
+    const src=audioCtx.createMediaStreamSource(stream);
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=2048;
+    analyser.smoothingTimeConstant=0.5;
+    src.connect(analyser);
+    freqData=new Uint8Array(analyser.frequencyBinCount);
+    timeData=new Uint8Array(analyser.fftSize);
+    micOn=true;calibrating=1.4;noiseFloor=18;
+    statusEl.innerHTML='Ortam sesi ölçülüyor, bir saniye sessiz kal…';
+    return true;
+  }catch(err){
+    micOn=false;
+    const n=(err&&err.name)?err.name:'Hata';
+    let tip='';
+    if(n==='NotAllowedError')tip=inFrame?'Bu önizleme çerçevesi izin vermiyor; dosyayı Safari’de aç.':'İzin reddedildi. Ayarlar → Safari → Mikrofon bölümünden siteye izin ver.';
+    else if(n==='NotFoundError')tip='Mikrofon bulunamadı.';
+    else if(n==='NotSupported')tip='Bu adres güvenli değil (https gerekli).';
+    else tip='Sayfayı yenileyip tekrar dene.';
+    statusEl.innerHTML='<b>Mikrofon açılamadı ('+n+').</b> '+tip+' Şimdilik <b>Basılı tut ve üfle</b> düğmesini kullan.';
+    return false;
+  }
+}
+
+function readMic(dt){
+  if(!micOn||!analyser)return 0;
+  analyser.getByteFrequencyData(freqData);
+  analyser.getByteTimeDomainData(timeData);
+  const binHz=(audioCtx.sampleRate/2)/freqData.length;
+  const at=function(f){return Math.min(freqData.length-1,Math.round(f/binHz));};
+  const band=function(a,b){let s=0,n=0;for(let i=at(a);i<=at(b);i++){s+=freqData[i];n++;}return n?s/n:0;};
+  const low=band(30,450),mid=band(700,1800),high=band(3500,8000);
+  let rms=0;
+  for(let i=0;i<timeData.length;i+=2){const v=(timeData[i]-128)/128;rms+=v*v;}
+  rms=Math.sqrt(rms/(timeData.length/2));
+
+  if(calibrating>0){                       // ortam gürültüsünü öğren
+    calibrating-=dt;
+    noiseFloor=Math.max(noiseFloor,low+3);
+    if(calibrating<=0)statusEl.innerHTML='Hazır. Telefonu ağzına yaklaştır ve üfle.';
+    return 0;
+  }
+  const margin=6+(100-Number(sens.value))*0.55;
+  const th=noiseFloor+margin;
+  meterMark.style.left=Math.min(99,(th/120)*100)+'%';
+  meterFill.style.width=Math.min(100,(low/120)*100)+'%';
+
+  let s=(low-th)/45;
+  if(low<mid*1.1)s*=0.4;                   // konuşma/müziği baskıla
+  if(high>low*0.9)s*=0.55;                 // tiz gürültüyü baskıla
+  if(rms<0.02)s=0;                         // gerçek bir enerji yoksa yok say
+  return Math.max(0,Math.min(1.6,s));
+}
+
+/* ================= RÜZGAR ================= */
+let wind=0,blowTime=0,nextOut=0,holding=false,gustClock=0;
+const windLayer=document.getElementById('wind');
+const roomGlow=document.getElementById('roomGlow');
+const wishEl=document.getElementById('wish');
+const subtitle=document.getElementById('subtitle');
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function gust(){
+  const g=document.createElement('div');g.className='gust';
+  g.style.top=(18+Math.random()*64)+'vh';
+  g.style.width=(14+Math.random()*26)+'vw';g.style.left='0';
+  windLayer.appendChild(g);
+  g.addEventListener('animationend',function(){g.remove();});
+}
+function puffSmoke(c){
+  for(let i=0;i<3;i++){
+    const s=document.createElement('div');s.className='smoke';
+    s.style.animationDelay=(i*0.18)+'s';
+    s.style.left=(-6+(Math.random()*8-4))+'px';
+    c.flameRig.appendChild(s);
+    s.addEventListener('animationend',function(){s.remove();});
+  }
+}
+function extinguish(c){
+  if(!c.lit)return;
+  c.lit=false;
+  c.flame.style.transition='transform .28s ease-in,opacity .28s ease-in';
+  c.flame.style.transform='rotate(46deg) scale(.12)';
+  c.flame.style.opacity='0';
+  c.flame.style.boxShadow='none';
+  setTimeout(function(){puffSmoke(c);},180);
+  const left=candles.filter(function(x){return x.lit;}).length;
+  roomGlow.style.opacity=String(0.25+0.75*(left/candles.length));
+  if(left===0){
+    wishEl.classList.add('on');
+    subtitle.textContent='';
+    statusEl.innerHTML='Hepsi söndü. Dileğini kimseye söyleme.';
+  }
+}
+function relight(){
+  candles.forEach(function(c){
+    c.lit=true;
+    c.flame.style.transition='opacity .5s ease';
+    c.flame.style.opacity='1';
+    c.flame.style.boxShadow='';
+  });
+  wishEl.classList.remove('on');
+  roomGlow.style.opacity='1';
+  blowTime=0;
+  subtitle.textContent='Bir dilek tut';
+  statusEl.innerHTML=micOn?'Mumlar yandı. Üflemeye hazır.':'Mumlar yandı. Düğmeyi basılı tut.';
+}
+
+/* ================= DÖNGÜ ================= */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  const mic=readMic(dt);
+  const target=Math.max(mic,holding?1.2:0);
+  wind+=(target-wind)*(target>wind?0.35:0.08);
+  if(!micOn||calibrating>0)meterFill.style.width=Math.min(100,wind*70)+'%';
+
+  const alive=candles.filter(function(c){return c.lit;});
+  if(wind>0.42&&alive.length){
+    blowTime+=dt;
+    if(blowTime>0.2&&now>nextOut){
+      extinguish(alive[Math.floor(Math.random()*alive.length)]);
+      nextOut=now+190;
+    }
+    gustClock-=dt;
+    if(!reduced&&gustClock<=0){gust();gustClock=0.09;}
+  }else if(wind<0.2){blowTime=Math.max(0,blowTime-dt*1.5);}
+
+  const bend=Math.min(58,wind*52);
+  for(let i=0;i<candles.length;i++){
+    const c=candles[i];
+    c.phase+=dt*(3.4+c.seed);
+    const flick=Math.sin(c.phase)*0.5+Math.sin(c.phase*2.7)*0.25;
+    c.flameRig.style.transform='translateY('+(-CANDLE_H-3)+'px) rotateY('+(-rotY)+'deg)';
+    if(!c.lit)continue;
+    const tilt=bend*c.seed+flick*(2.5+wind*10);
+    const sy=(1+flick*0.09)*(1-Math.min(0.45,wind*0.34));
+    const sx=1+Math.min(0.3,wind*0.22)-flick*0.04;
+    c.flame.style.transform='rotate('+tilt.toFixed(2)+'deg) scale('+sx.toFixed(3)+','+sy.toFixed(3)+')';
+  }
+  requestAnimationFrame(loop);
+}
+applyScene();
+requestAnimationFrame(loop);
+
+/* ================= DÜĞMELER ================= */
+const gate=document.getElementById('gate');
+function closeGate(){gate.classList.add('hidden');setTimeout(function(){gate.remove();},520);}
+startBtn.addEventListener('click',async function(){await startMic();closeGate();});
+document.getElementById('skip').addEventListener('click',function(){
+  statusEl.innerHTML='Mikrofon kapalı. Düğmeyi basılı tutarak üfle.';
+  closeGate();
+});
+document.getElementById('relight').addEventListener('click',relight);
+
+const blowBtn=document.getElementById('blowBtn');
+function holdOn(e){e.preventDefault();holding=true;blowBtn.classList.add('on');}
+function holdOff(){holding=false;blowBtn.classList.remove('on');}
+blowBtn.addEventListener('pointerdown',holdOn);
+blowBtn.addEventListener('pointerup',holdOff);
+blowBtn.addEventListener('pointerleave',holdOff);
+blowBtn.addEventListener('pointercancel',holdOff);
+blowBtn.addEventListener('touchstart',holdOn,{passive:false});
+blowBtn.addEventListener('touchend',holdOff);
+addEventListener('keydown',function(e){if(e.code==='Space'&&!e.repeat){e.preventDefault();holding=true;}});
+addEventListener('keyup',function(e){if(e.code==='Space'){holding=false;}});
+
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+});
+statusEl.textContent='Başlamak için ekrandaki düğmeyi kullan.';
+})();
+</script>
+</body>
+</html>
